@@ -1,104 +1,81 @@
-# AgentCore Project
+# 🏅 Customer Support Agent on Amazon Bedrock AgentCore
 
-This project was created with the [AgentCore CLI](https://github.com/aws/agentcore-cli).
+**A production-grade customer support agent system built during the BeSA Cloud Academy program *Agentic AI: PoC to Production on AWS*.**
 
-## Project Structure
+It covers the full path from a prototype agent to a **secured, observable, continuously evaluated** deployment: JWT auth, a governed tool gateway, long-term memory, online evaluations, and an A/B runtime.
+
+![AgentCore](https://img.shields.io/badge/Bedrock_AgentCore-0d1117?style=for-the-badge&logoColor=dc2626)
+![Strands](https://img.shields.io/badge/Strands_Agents_SDK-0d1117?style=for-the-badge&logo=python&logoColor=dc2626)
+![CDK](https://img.shields.io/badge/AWS_CDK-0d1117?style=for-the-badge&logo=typescript&logoColor=dc2626)
+![Cognito](https://img.shields.io/badge/Cognito_JWT-0d1117?style=for-the-badge&logoColor=dc2626)
+
+---
+
+## 🏗️ Architecture
 
 ```
-my-project/
-├── AGENTS.md               # AI coding assistant context
-├── agentcore/
-│   ├── agentcore.json      # Project config (agents, memories, credentials, gateways, evaluators)
-│   ├── aws-targets.json    # Deployment targets (account + region)
-│   ├── .env.local          # Secrets — API keys (gitignored)
-│   ├── .llm-context/       # TypeScript type definitions for AI assistants
-│   │   ├── agentcore.ts    # AgentCoreProjectSpec types
-│   │   ├── aws-targets.ts  # Deployment target types
-│   │   └── mcp.ts          # Gateway and MCP tool types
-│   └── cdk/                # CDK infrastructure (@aws/agentcore-cdk)
-├── app/                    # Agent application code
-└── evaluators/             # Custom evaluator code (if any)
+  Frontend (Flask UI)
+        │  JWT (Amazon Cognito)
+        ▼
+┌───────────────────────────────┐        ┌─────────────────────────────┐
+│ AgentCore Runtime             │        │ AgentCore Memory            │
+│ "CustomerSupport" (Strands)   │◄──────►│ SharedMemory                │
+│  • get_return_policy          │        │  • SEMANTIC  /users/{id}/facts
+│  • get_product_info           │        │  • SUMMARIZATION per session│
+│  • dynamic model config hook  │        └─────────────────────────────┘
+└──────────────┬────────────────┘
+               │ MCP (OAuth2 M2M egress)
+               ▼
+┌───────────────────────────────┐
+│ AgentCore Gateway (secured)   │  semantic tool search + policy engine
+│  ├─ WarrantyCheck  → Lambda   │
+│  ├─ ProcessRefund  → Lambda   │
+│  └─ customer-support-ab → HTTP runtime "CustomerSupportAB"
+└───────────────────────────────┘
+               │
+               ▼
+   Online Evaluations: GoalSuccessRate · Correctness · ToolSelectionAccuracy
 ```
 
-## Getting Started
+## ✨ What's inside
 
-### Prerequisites
+| Capability | Implementation |
+|---|---|
+| **🤖 Agent runtime** | Strands agent on AgentCore Runtime (Python 3.13) with local tools plus a `BeforeModelCallEvent` hook for dynamic model config |
+| **🔐 Inbound auth** | `CUSTOM_JWT` authorizer backed by Amazon Cognito, with an allow-listed user-ID header |
+| **🛠️ Tool gateway** | AgentCore Gateway exposes Lambda tools (`WarrantyCheck`, `ProcessRefund`) over MCP with JSON tool schemas, **semantic tool search**, and a **policy engine** |
+| **🔑 Outbound auth** | OAuth2 client-credentials provider so the agent can call the gateway |
+| **🧠 Memory** | Shared long-term memory with **semantic facts** per user and **session summaries** |
+| **📊 Online evals** | `QualityMonitor` samples 100% of traffic and scores goal success, correctness, and tool-selection accuracy |
+| **🧪 A/B testing** | Second runtime `CustomerSupportAB` (Python 3.14) with its own `ABQualityMonitor` |
+| **🧩 Harness agents** | `ContainerAgent`, `OrderResearchAgent` (with a human-in-the-loop test), `PersistentReportAgent` |
+| **☁️ IaC** | Everything is defined in `agentcore/agentcore.json` and deployed with **AWS CDK** |
 
-- **Node.js** 20.x or later
-- **Python 3.10+** and **uv** for Python agents ([install uv](https://docs.astral.sh/uv/getting-started/installation/))
-- **AWS credentials** configured (`aws configure` or environment variables)
-- **Docker** (only for Container build agents)
+## 📁 Structure
 
-### Development
+```
+agentcore/
+  agentcore.json        # runtimes, memory, gateway, credentials, evaluators
+  cdk/                  # CDK app that deploys the project
+app/
+  CustomerSupport/      # main agent: main.py, tools, memory, MCP client, frontend
+  CustomerSupportAB/    # A/B variant runtime
+  ContainerAgent/       # harness agent
+  OrderResearchAgent/   # harness agent + HITL test
+  PersistentReportAgent/
+```
 
-Run your agent locally:
+## 🚀 Deploy
 
 ```bash
-agentcore dev
+# requires the AgentCore CLI (github.com/aws/agentcore-cli), Python 3.10+ and uv
+agentcore dev       # run locally with hot-reload
+agentcore deploy    # deploy to AWS via CDK
+agentcore status    # deployment status
+agentcore invoke    # invoke the agent (local or deployed)
+agentcore eval      # run evaluations
 ```
 
-### Deployment
+---
 
-Deploy to AWS:
-
-```bash
-agentcore deploy
-```
-
-## Commands
-
-| Command | Description |
-| --- | --- |
-| `agentcore create` | Create a new AgentCore project |
-| `agentcore add` | Add resources (agent, memory, credential, gateway, evaluator, policy) |
-| `agentcore remove` | Remove resources |
-| `agentcore dev` | Run agent locally with hot-reload |
-| `agentcore deploy` | Deploy to AWS via CDK |
-| `agentcore status` | Show deployment status |
-| `agentcore invoke` | Invoke agent (local or deployed) |
-| `agentcore logs` | View agent logs |
-| `agentcore traces` | View agent traces |
-| `agentcore eval` | Run evaluations |
-| `agentcore package` | Package agent artifacts |
-| `agentcore validate` | Validate configuration |
-| `agentcore pause` | Pause a deployed agent |
-| `agentcore resume` | Resume a paused agent |
-| `agentcore fetch` | Fetch remote resource definitions |
-| `agentcore import` | Import existing resources |
-| `agentcore update` | Check for CLI updates |
-
-## Configuration
-
-Edit the JSON files in `agentcore/` to configure your project. See `agentcore/.llm-context/` for type definitions and validation constraints.
-
-The project uses a **flat resource model** — agents, memories, credentials, gateways, evaluators, and policies are top-level arrays in `agentcore.json`. Resources are independent; agents discover memories and credentials at runtime via environment variables or SDK calls.
-
-## Resources
-
-| Resource | Purpose |
-| --- | --- |
-| Agent (runtime) | HTTP, MCP, or A2A agent deployed to AgentCore Runtime |
-| Memory | Persistent context storage with configurable strategies |
-| Credential | API key or OAuth credential providers |
-| Gateway | MCP gateway that routes tool calls to targets |
-| Gateway Target | Tool implementation (Lambda, MCP server, OpenAPI, Smithy, API Gateway) |
-| Evaluator | Custom LLM-as-a-Judge or code-based evaluation |
-| Online Eval Config | Continuous evaluation pipeline for deployed agents |
-| Policy | Cedar authorization policies for gateway tools |
-
-### Agent Types
-
-- **Template agents**: Created from framework templates (Strands, LangChain/LangGraph, GoogleADK, OpenAI Agents, Autogen)
-- **BYO agents**: Bring your own code with `agentcore add agent --type byo`
-- **Import agents**: Import existing Bedrock agents with `agentcore import`
-
-### Build Types
-
-- **CodeZip**: Python source packaged as a zip and deployed directly to AgentCore Runtime
-- **Container**: Docker image built via CodeBuild (ARM64), pushed to ECR, and deployed to AgentCore Runtime
-
-## Documentation
-
-- [AgentCore CLI](https://github.com/aws/agentcore-cli)
-- [AgentCore CDK Constructs](https://github.com/aws/agentcore-l3-cdk-constructs)
-- [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)
+<sub>Built by <a href="https://github.com/n0zzzy">Russel Carlo</a> · BeSA Cloud Academy, <i>Agentic AI: PoC to Production on AWS</i></sub>
