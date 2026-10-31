@@ -13,29 +13,7 @@ It covers the full path from a prototype agent to a **secured, observable, conti
 
 ## 🏗️ Architecture
 
-```
-  Frontend (Flask UI)
-        │  JWT (Amazon Cognito)
-        ▼
-┌───────────────────────────────┐        ┌─────────────────────────────┐
-│ AgentCore Runtime             │        │ AgentCore Memory            │
-│ "CustomerSupport" (Strands)   │◄──────►│ SharedMemory                │
-│  • get_return_policy          │        │  • SEMANTIC  /users/{id}/facts
-│  • get_product_info           │        │  • SUMMARIZATION per session│
-│  • dynamic model config hook  │        └─────────────────────────────┘
-└──────────────┬────────────────┘
-               │ MCP (OAuth2 M2M egress)
-               ▼
-┌───────────────────────────────┐
-│ AgentCore Gateway (secured)   │  semantic tool search + policy engine
-│  ├─ WarrantyCheck  → Lambda   │
-│  ├─ ProcessRefund  → Lambda   │
-│  └─ customer-support-ab → HTTP runtime "CustomerSupportAB"
-└───────────────────────────────┘
-               │
-               ▼
-   Online Evaluations: GoalSuccessRate · Correctness · ToolSelectionAccuracy
-```
+<p align="center"><img src="docs/architecture.svg" alt="Architecture diagram" width="100%"/></p>
 
 ## ✨ What's inside
 
